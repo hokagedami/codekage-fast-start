@@ -1,0 +1,66 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- Point to Visual Studio's AppxPackage tools -->
+    <AppxPackageDir>C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage\</AppxPackageDir>
+    <VsInstallRoot>C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools</VsInstallRoot>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows10.0.22621.0</TargetFramework>
+    <UseWinUI>true</UseWinUI>
+    <EnableMsixTooling>false</EnableMsixTooling>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <WindowsPackageType>None</WindowsPackageType>
+    <Platforms>x64</Platforms>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <EnableDefaultPageItems>false</EnableDefaultPageItems>
+    <EnableDefaultApplicationDefinition>false</EnableDefaultApplicationDefinition>
+    <DefineConstants>DISABLE_XAML_GENERATED_MAIN</DefineConstants>
+    <StartupObject>FastStart.UI.Program</StartupObject>
+    <!-- Disable packaging features not needed for unpackaged app -->
+    <GenerateAppInstallerFile>false</GenerateAppInstallerFile>
+    <AppxPackageSigningEnabled>false</AppxPackageSigningEnabled>
+    <GenerateTestArtifacts>false</GenerateTestArtifacts>
+    <AppxBundle>Never</AppxBundle>
+    <!-- Disable MRT/PRI resource tooling (not needed for minimal unpackaged app) -->
+    <EnableMrtResourceGeneration>false</EnableMrtResourceGeneration>
+    <EnableDefaultPriItems>false</EnableDefaultPriItems>
+    <EnableMrtTooling>false</EnableMrtTooling>
+    <GeneratePriConfigXmlFile>false</GeneratePriConfigXmlFile>
+    <GeneratePriFile>false</GeneratePriFile>
+    <MrtCoreDeployAssets>false</MrtCoreDeployAssets>
+    <DisableMrtForUnpackagedApps>true</DisableMrtForUnpackagedApps>
+    <!-- Point MRT tooling to VS Build Tools path -->
+    <MrtCoreToolDirectory>C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage\</MrtCoreToolDirectory>
+    <WindowsAppSdkBootstrapAutoInitializeOptions_OnNoMatch>Ignore</WindowsAppSdkBootstrapAutoInitializeOptions_OnNoMatch>
+    <WindowsAppSdkBootstrapAutoInitializeOptions_OnPackageIdentity>Ignore</WindowsAppSdkBootstrapAutoInitializeOptions_OnPackageIdentity>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.6.250108002" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.1742" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
+    <PackageReference Include="Serilog" Version="3.1.1" />
+    <PackageReference Include="Serilog.Extensions.Hosting" Version="8.0.0" />
+    <PackageReference Include="Serilog.Sinks.File" Version="5.0.0" />
+    <PackageReference Include="System.Drawing.Common" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FastStart.Core\FastStart.Core.csproj" />
+    <ProjectReference Include="..\FastStart.Data\FastStart.Data.csproj" />
+    <ProjectReference Include="..\FastStart.Native\FastStart.Native.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ApplicationDefinition Include="App.xaml" />
+    <Page Include="MainWindow.xaml" />
+  </ItemGroup>
+
+  <!-- Override PRI targets to no-op when disabled -->
+  <Target Name="_GeneratePriConfigXmlInputs" BeforeTargets="GeneratePriConfigXmlInputs" />
+  <Target Name="_ExpandPriContent" BeforeTargets="ExpandPriContent" />
+  <Target Name="_GeneratePriFile" BeforeTargets="GeneratePriFile" />
+
+</Project>
