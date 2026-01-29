@@ -1,0 +1,19 @@
+bin/
+obj/
+/packages/
+riderModule.iml
+/_ReSharper.Caches/
+
+# IDE
+.idea/
+.vs/
+*.user
+*.suo
+*.DotSettings.user
+
+# Build
+*.log
+nul
+
+# Local settings
+.claude/settings.local.json
