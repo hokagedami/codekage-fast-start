@@ -17,3 +17,6 @@ nul
 
 # Local settings
 .claude/settings.local.json
+# Local docs
+.claude/
+docs/
