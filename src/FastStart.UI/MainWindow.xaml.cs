@@ -28,6 +28,8 @@ public sealed partial class MainWindow : Window
     private AppWindow _appWindow;
     private SettingsPage? _settingsPage;
 
+    public bool IsWindowVisible => _appWindow.IsVisible;
+
     public MainWindow(MainViewModel viewModel, IPreferencesRepository preferencesRepository, GlobalKeyboardHook keyboardHook)
     {
         ViewModel = viewModel;
@@ -118,7 +120,7 @@ public sealed partial class MainWindow : Window
                 if (ViewModel.SelectedResult is not null)
                 {
                     await ViewModel.LaunchAppAsync(ViewModel.SelectedResult.App);
-                    Close();
+                    HideWindow();
                 }
                 break;
             case VirtualKey.Down:
@@ -142,7 +144,7 @@ public sealed partial class MainWindow : Window
                 }
                 break;
             case VirtualKey.Escape:
-                Close();
+                HideWindow();
                 break;
         }
     }
@@ -152,7 +154,7 @@ public sealed partial class MainWindow : Window
         if (e.ClickedItem is SearchResultViewModel result)
         {
             await ViewModel.LaunchAppAsync(result.App);
-            Close();
+            HideWindow();
         }
     }
 
@@ -161,7 +163,7 @@ public sealed partial class MainWindow : Window
         if (e.ClickedItem is AppViewModel app)
         {
             await ViewModel.LaunchAppAsync(app.App);
-            Close();
+            HideWindow();
         }
     }
 
@@ -170,7 +172,7 @@ public sealed partial class MainWindow : Window
         if (e.ClickedItem is AppViewModel app)
         {
             await ViewModel.LaunchAppAsync(app.App);
-            Close();
+            HideWindow();
         }
     }
 
@@ -179,7 +181,7 @@ public sealed partial class MainWindow : Window
         if (e.ClickedItem is AppViewModel app)
         {
             await ViewModel.LaunchAppAsync(app.App);
-            Close();
+            HideWindow();
         }
     }
 
@@ -198,7 +200,7 @@ public sealed partial class MainWindow : Window
         if (sender is Button button && button.Tag is AppViewModel app)
         {
             await ViewModel.LaunchAppAsync(app.App);
-            Close();
+            HideWindow();
         }
     }
 

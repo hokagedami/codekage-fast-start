@@ -7,6 +7,7 @@ using FastStart.Native;
 using FastStart.UI.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Serilog;
 using Serilog.Events;
@@ -22,14 +23,16 @@ public sealed partial class App : Application
     private readonly CancellationTokenSource _appCts = new();
     private readonly GlobalKeyboardHook _keyboardHook;
     private readonly TrayIconManager _trayIcon;
-    private readonly bool _startMinimized;
+    private readonly bool _backgroundMode;
     private readonly bool _diagnosticMode;
     private MainWindow? _window;
-    private bool _minimizeToTray;
+    private bool _windowPreRendered;
+    private Stopwatch? _warmStartStopwatch;
 
     public new static App Current => (App)Application.Current;
     public MainWindow? MainWindow => _window;
     public IServiceProvider Services => _services;
+    public DispatcherQueue? DispatcherQueue { get; private set; }
 
     public App()
     {
@@ -38,7 +41,8 @@ public sealed partial class App : Application
 
         // Check for command line arguments
         var args = Environment.GetCommandLineArgs();
-        _startMinimized = args.Contains("--background");
+        // Background mode is the default for production use
+        _backgroundMode = !args.Contains("--foreground");
         _diagnosticMode = args.Contains("--diag");
 
         // Use minimal DI without generic host overhead
@@ -56,22 +60,30 @@ public sealed partial class App : Application
     {
         try
         {
-            // Create and show window immediately - don't block on anything
+            DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
+
+            // Create window (but don't show yet in background mode)
             _startupTiming.Mark(StartupMarker.WindowResolving);
             _window = _services.GetRequiredService<MainWindow>();
             _startupTiming.Mark(StartupMarker.WindowCreated);
 
             _window.Closed += OnWindowClosed;
 
-            // Show window immediately (empty state is fine)
-            if (!_startMinimized)
+            if (_backgroundMode)
             {
+                // Pre-render window hidden for instant show later
+                await PreRenderWindowAsync();
+                _logger.LogInformation("FastStart running in background mode. Press Win key to show.");
+            }
+            else
+            {
+                // Foreground mode - show immediately
                 _window.Activate();
                 _startupTiming.Mark(StartupMarker.FirstWindowActivated);
                 LogStartupDiagnostics();
             }
 
-            // Initialize everything else in background after window is visible
+            // Initialize everything else in background
             _ = InitializeAfterWindowShownAsync();
         }
         catch (Exception e)
@@ -79,6 +91,45 @@ public sealed partial class App : Application
             _logger.LogError(e, "Application launch failed.");
             await ShutdownAsync();
         }
+    }
+
+    private async Task PreRenderWindowAsync()
+    {
+        // Activate window briefly to trigger XAML rendering, then hide
+        _window!.Activate();
+        _startupTiming.Mark(StartupMarker.FirstWindowActivated);
+
+        // Give WinUI time to render
+        await Task.Delay(100);
+
+        // Hide the window
+        _window.HideWindow();
+        _windowPreRendered = true;
+
+        LogStartupDiagnostics();
+        _logger.LogInformation("Window pre-rendered and ready for instant display.");
+    }
+
+    public void ShowMainWindow()
+    {
+        if (_window is null) return;
+
+        _warmStartStopwatch = Stopwatch.StartNew();
+
+        _window.DispatcherQueue.TryEnqueue(() =>
+        {
+            _window.ShowWindow();
+
+            // Log warm start time
+            _warmStartStopwatch?.Stop();
+            var warmStartMs = _warmStartStopwatch?.ElapsedMilliseconds ?? 0;
+            _logger.LogInformation("Warm start time: {WarmStartMs}ms", warmStartMs);
+
+            if (_diagnosticMode)
+            {
+                Console.WriteLine($"Warm start time: {warmStartMs}ms (Target: <50ms)");
+            }
+        });
     }
 
     private async Task InitializeAfterWindowShownAsync()
@@ -90,10 +141,8 @@ public sealed partial class App : Application
             themeService.Initialize(_window!);
             themeService.FollowSystem();
 
-            // Load preferences and setup features
+            // Load preferences
             var prefsRepo = _services.GetRequiredService<IPreferencesRepository>();
-            var minimizeToTrayPref = await prefsRepo.GetAsync("MinimizeToTray", _appCts.Token);
-            _minimizeToTray = minimizeToTrayPref?.Value == "true";
             var hookEnabledPref = await prefsRepo.GetAsync("WinKeyHookEnabled", _appCts.Token);
             var hookEnabled = hookEnabledPref?.Value != "false";
 
@@ -102,13 +151,12 @@ public sealed partial class App : Application
             _keyboardHook.WinKeyPressed += OnWinKeyPressed;
             _keyboardHook.Start();
 
-            // Setup tray icon
+            // Setup tray icon (always show in background mode)
             var hWnd = WinRT.Interop.WindowNative.GetWindowHandle(_window!);
             _trayIcon.WindowHandle = hWnd;
-            if (_minimizeToTray)
-            {
-                _trayIcon.Show();
-            }
+            _trayIcon.ShowRequested += (s, e) => ShowMainWindow();
+            _trayIcon.ExitRequested += async (s, e) => await ExitApplicationAsync();
+            _trayIcon.Show();
 
             // Initialize database and start indexing in background
             _startupTiming.Mark(StartupMarker.HostStarting);
@@ -134,9 +182,19 @@ public sealed partial class App : Application
     {
         if (_window is null) return;
 
+        _warmStartStopwatch = Stopwatch.StartNew();
+
         _window.DispatcherQueue.TryEnqueue(() =>
         {
             _window.ToggleVisibility();
+
+            // Log warm start time only when showing
+            if (_window.IsWindowVisible)
+            {
+                _warmStartStopwatch?.Stop();
+                var warmStartMs = _warmStartStopwatch?.ElapsedMilliseconds ?? 0;
+                _logger.LogDebug("Toggle to visible: {WarmStartMs}ms", warmStartMs);
+            }
         });
     }
 
@@ -144,12 +202,11 @@ public sealed partial class App : Application
     {
         try
         {
-            // If minimize to tray is enabled, hide instead of close
-            if (_minimizeToTray)
+            // In background mode, always hide instead of close
+            if (_backgroundMode)
             {
                 args.Handled = true;
                 _window?.HideWindow();
-                _trayIcon.Show();
                 return;
             }
 
@@ -187,7 +244,6 @@ public sealed partial class App : Application
 
     public async Task ExitApplicationAsync()
     {
-        _minimizeToTray = false; // Prevent minimize on close
         await ShutdownAsync();
         Environment.Exit(0);
     }
@@ -219,8 +275,12 @@ public sealed partial class App : Application
         {
             Console.WriteLine(report);
             WriteDiagnosticsToFile("memory", report);
-            Console.WriteLine("\nDiagnostic mode complete. Exiting...");
-            _ = ExitApplicationAsync();
+
+            if (!_backgroundMode)
+            {
+                Console.WriteLine("\nDiagnostic mode complete. Exiting...");
+                _ = ExitApplicationAsync();
+            }
         }
 
         System.Diagnostics.Debug.WriteLine(report);
