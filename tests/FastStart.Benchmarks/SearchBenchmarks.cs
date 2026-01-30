@@ -8,8 +8,8 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace FastStart.Benchmarks;
 
 [MemoryDiagnoser]
-[SimpleJob(RuntimeMoniker.Net80)]
-public sealed class SearchBenchmarks
+[SimpleJob(RuntimeMoniker.Net90)]
+public class SearchBenchmarks
 {
     private ISearchService _searchService = null!;
 

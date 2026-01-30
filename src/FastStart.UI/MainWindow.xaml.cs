@@ -2,6 +2,8 @@ using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using FastStart.Core.Repositories;
+using FastStart.Native;
 using FastStart.UI.ViewModels;
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
@@ -12,33 +14,72 @@ using Microsoft.UI.Windowing;
 using Windows.Graphics;
 using Windows.System;
 using WinRT.Interop;
+using Microsoft.UI.Composition.SystemBackdrops;
 
 namespace FastStart.UI;
 
 public sealed partial class MainWindow : Window
 {
     public MainViewModel ViewModel { get; }
+    private readonly IPreferencesRepository _preferencesRepository;
+    private readonly GlobalKeyboardHook _keyboardHook;
     private CancellationTokenSource? _searchCts;
     private readonly DispatcherTimer _searchDebounce;
     private AppWindow _appWindow;
+    private SettingsPage? _settingsPage;
 
-    public MainWindow(MainViewModel viewModel)
+    public MainWindow(MainViewModel viewModel, IPreferencesRepository preferencesRepository, GlobalKeyboardHook keyboardHook)
     {
         ViewModel = viewModel;
+        _preferencesRepository = preferencesRepository;
+        _keyboardHook = keyboardHook;
         this.InitializeComponent();
 
         _appWindow = GetAppWindowForCurrentWindow();
         _appWindow.Resize(new SizeInt32(600, 700));
+        PositionWindowAboveTaskbar();
 
-        ExtendsContentIntoTitleBar = true;
+        // Make window borderless like Windows 11 Start Menu
+        if (_appWindow.Presenter is OverlappedPresenter presenter)
+        {
+            presenter.SetBorderAndTitleBar(false, false);
+            presenter.IsResizable = false;
+            presenter.IsMaximizable = false;
+            presenter.IsMinimizable = false;
+        }
+
         SystemBackdrop = new MicaBackdrop();
 
         _searchDebounce = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(150) };
         _searchDebounce.Tick += SearchDebounce_Tick;
 
-        Activated += (s, e) => SearchBox.Focus(FocusState.Programmatic);
+        Activated += OnFirstActivated;
+    }
 
-        _ = LoadInitialDataAsync();
+    private bool _dataLoaded;
+
+    private void OnFirstActivated(object sender, WindowActivatedEventArgs e)
+    {
+        SearchBox.Focus(FocusState.Programmatic);
+
+        // Load data only once, after window is visible
+        if (!_dataLoaded)
+        {
+            _dataLoaded = true;
+            _ = LoadInitialDataAsync();
+        }
+    }
+
+    private void PositionWindowAboveTaskbar()
+    {
+        // Get screen dimensions
+        var displayArea = DisplayArea.GetFromWindowId(_appWindow.Id, DisplayAreaFallback.Primary);
+        var workArea = displayArea.WorkArea;
+
+        // Position at bottom-left, above taskbar
+        var x = workArea.X + 12;
+        var y = workArea.Y + workArea.Height - 700 - 12;
+        _appWindow.Move(new Windows.Graphics.PointInt32(x, y));
     }
 
     private AppWindow GetAppWindowForCurrentWindow()
@@ -175,5 +216,75 @@ public sealed partial class MainWindow : Window
         {
             await ViewModel.UnpinAppAsync(app.App, CancellationToken.None);
         }
+    }
+
+    private void SettingsButton_Click(object sender, RoutedEventArgs e)
+    {
+        ShowSettings();
+    }
+
+    private void ShowSettings()
+    {
+        if (_settingsPage is null)
+        {
+            _settingsPage = new SettingsPage(_preferencesRepository, _keyboardHook);
+            _settingsPage.BackRequested += (s, e) => HideSettings();
+        }
+
+        SettingsContainer.Content = _settingsPage;
+        SettingsContainer.Visibility = Visibility.Visible;
+        MainContent.Visibility = Visibility.Collapsed;
+    }
+
+    private void HideSettings()
+    {
+        SettingsContainer.Visibility = Visibility.Collapsed;
+        MainContent.Visibility = Visibility.Visible;
+        SearchBox.Focus(FocusState.Programmatic);
+    }
+
+    public void ToggleVisibility()
+    {
+        if (_appWindow.IsVisible)
+        {
+            _appWindow.Hide();
+        }
+        else
+        {
+            ResetViewState();
+            PositionWindowAboveTaskbar();
+            _appWindow.Show();
+            Activate();
+            SearchBox.Focus(FocusState.Programmatic);
+        }
+    }
+
+    public void ShowWindow()
+    {
+        ResetViewState();
+        PositionWindowAboveTaskbar();
+        _appWindow.Show();
+        Activate();
+        SearchBox.Focus(FocusState.Programmatic);
+    }
+
+    private void ResetViewState()
+    {
+        // Clear search query and results
+        ViewModel.SearchQuery = string.Empty;
+
+        // Hide settings if open
+        if (SettingsContainer.Visibility == Visibility.Visible)
+        {
+            HideSettings();
+        }
+
+        // Collapse All Apps section if expanded
+        AllAppsSection.Visibility = Visibility.Collapsed;
+    }
+
+    public void HideWindow()
+    {
+        _appWindow.Hide();
     }
 }

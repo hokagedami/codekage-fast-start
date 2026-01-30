@@ -8,12 +8,14 @@
     mc:Ignorable="d"
     Title="FastStart">
 
-    <Grid Background="Transparent">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-        </Grid.RowDefinitions>
+    <Grid Background="{ThemeResource LayerFillColorDefaultBrush}" CornerRadius="8">
+        <!-- Main Content -->
+        <Grid x:Name="MainContent">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
 
         <!-- Error Bar -->
         <InfoBar x:Name="ErrorBar"
@@ -24,21 +26,36 @@
                  Message="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}"
                  IsClosable="True"/>
 
-        <!-- Search Box -->
-        <Grid Grid.Row="1" Margin="16,16,16,8">
-            <TextBox x:Name="SearchBox"
-                     PlaceholderText="Search for apps, settings, and documents"
-                     Text="{x:Bind ViewModel.SearchQuery, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                     TextChanged="SearchBox_TextChanged"
-                     KeyDown="SearchBox_KeyDown"
-                     Padding="36,8,12,8"
-                     CornerRadius="4"/>
-            <FontIcon Glyph="&#xE721;"
-                      FontSize="16"
-                      HorizontalAlignment="Left"
-                      VerticalAlignment="Center"
-                      Margin="12,0,0,0"
-                      Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+        <!-- Search Box and Settings -->
+        <Grid Grid.Row="1" Margin="16,12,16,8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <Grid>
+                <TextBox x:Name="SearchBox"
+                         PlaceholderText="Search for apps, settings, and documents"
+                         Text="{x:Bind ViewModel.SearchQuery, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                         TextChanged="SearchBox_TextChanged"
+                         KeyDown="SearchBox_KeyDown"
+                         Padding="36,8,12,8"
+                         CornerRadius="4"/>
+                <FontIcon Glyph="&#xE721;"
+                          FontSize="16"
+                          HorizontalAlignment="Left"
+                          VerticalAlignment="Center"
+                          Margin="12,0,0,0"
+                          Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+            </Grid>
+            <Button x:Name="SettingsButton"
+                    Grid.Column="1"
+                    Click="SettingsButton_Click"
+                    Background="Transparent"
+                    Margin="8,0,0,0"
+                    Padding="8"
+                    ToolTipService.ToolTip="Settings">
+                <FontIcon Glyph="&#xE713;" FontSize="16"/>
+            </Button>
         </Grid>
 
         <!-- Search Results View -->
@@ -209,5 +226,9 @@
                 </StackPanel>
             </StackPanel>
         </ScrollViewer>
+        </Grid>
+
+        <!-- Settings Page Container -->
+        <ContentPresenter x:Name="SettingsContainer" Visibility="Collapsed"/>
     </Grid>
 </Window>

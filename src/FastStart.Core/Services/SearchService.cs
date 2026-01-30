@@ -1,3 +1,4 @@
+using System.Buffers;
 using FastStart.Core.Models;
 using FastStart.Core.Repositories;
 using Microsoft.Extensions.Logging;
@@ -10,10 +11,15 @@ namespace FastStart.Core.Services;
 public sealed class SearchService : ISearchService
 {
     private const int MaxResults = 20;
-    private const int TokenPrefixThreshold = 3; // Use token prefix filtering for queries <= 3 chars
+    private const int TokenPrefixThreshold = 3;
     private readonly IAppRepository _appRepository;
     private readonly FuzzyScorer _scorer;
     private readonly ILogger<SearchService> _logger;
+
+    // Cached data to avoid repeated allocations
+    private IReadOnlyList<AppInfo>? _cachedApps;
+    private IReadOnlyList<AppIndexEntry>? _cachedEntries;
+    private readonly object _cacheLock = new();
 
     /// <summary>
     /// Initializes a new instance of the <see cref="SearchService"/> class.
@@ -34,135 +40,198 @@ public sealed class SearchService : ISearchService
         }
 
         var normalized = query.Trim();
+        if (normalized.Length == 0)
+        {
+            return Array.Empty<SearchResult>();
+        }
 
-        // For short queries, use token-based prefix filtering for faster results
+        // For short queries, use token-based prefix filtering
         if (normalized.Length <= TokenPrefixThreshold)
         {
             return await SearchWithTokenPrefixAsync(normalized, ct).ConfigureAwait(false);
         }
 
-        // For longer queries, use standard fuzzy matching
-        var apps = await _appRepository.GetAllAsync(ct).ConfigureAwait(false);
+        // For longer queries, use fuzzy matching
+        var apps = await GetCachedAppsAsync(ct).ConfigureAwait(false);
         if (apps.Count == 0)
         {
             return Array.Empty<SearchResult>();
         }
 
-        var results = new List<SearchResult>(Math.Min(MaxResults, apps.Count));
-        foreach (var app in apps)
-        {
-            ct.ThrowIfCancellationRequested();
+        return SearchFuzzy(apps, normalized);
+    }
 
-            var score = _scorer.Score(normalized, app.Name, out var matchKind);
-            if (score <= 0)
+    private SearchResult[] SearchFuzzy(IReadOnlyList<AppInfo> apps, string query)
+    {
+        // Rent array from pool to avoid allocation
+        var buffer = ArrayPool<(int Score, int Index, SearchMatchKind MatchKind)>.Shared.Rent(apps.Count);
+        var count = 0;
+
+        try
+        {
+            for (var i = 0; i < apps.Count; i++)
             {
-                continue;
+                var score = _scorer.Score(query, apps[i].Name, out var matchKind);
+                if (score > 0)
+                {
+                    buffer[count++] = (score, i, matchKind);
+                }
             }
 
-            results.Add(new SearchResult
+            if (count == 0)
             {
-                App = app,
-                Score = score,
-                MatchKind = matchKind
-            });
-        }
+                return Array.Empty<SearchResult>();
+            }
 
-        if (results.Count == 0)
+            // Sort by score descending
+            Array.Sort(buffer, 0, count, ScoredIndexComparer.Instance);
+
+            // Take top results
+            var resultCount = Math.Min(count, MaxResults);
+            var results = new SearchResult[resultCount];
+
+            for (var i = 0; i < resultCount; i++)
+            {
+                var (score, index, matchKind) = buffer[i];
+                results[i] = new SearchResult
+                {
+                    App = apps[index],
+                    Score = score,
+                    MatchKind = matchKind
+                };
+            }
+
+            return results;
+        }
+        finally
         {
-            return Array.Empty<SearchResult>();
+            ArrayPool<(int, int, SearchMatchKind)>.Shared.Return(buffer);
         }
-
-        results.Sort(CompareResults);
-
-        if (results.Count > MaxResults)
-        {
-            results.RemoveRange(MaxResults, results.Count - MaxResults);
-        }
-
-        _logger.LogDebug("Search '{Query}' returned {Count} results.", normalized, results.Count);
-        return results;
     }
 
     private async Task<IReadOnlyList<SearchResult>> SearchWithTokenPrefixAsync(string query, CancellationToken ct)
     {
-        var entries = await _appRepository.GetAllWithTokensAsync(ct).ConfigureAwait(false);
+        var entries = await GetCachedEntriesAsync(ct).ConfigureAwait(false);
         if (entries.Count == 0)
         {
             return Array.Empty<SearchResult>();
         }
 
-        var results = new List<SearchResult>(Math.Min(MaxResults, entries.Count));
-        foreach (var entry in entries)
-        {
-            ct.ThrowIfCancellationRequested();
+        var buffer = ArrayPool<(int Score, int Index, SearchMatchKind MatchKind)>.Shared.Rent(entries.Count);
+        var count = 0;
 
-            // Check if any token starts with the query prefix
-            var hasMatchingToken = false;
-            foreach (var token in entry.Tokens)
+        try
+        {
+            for (var i = 0; i < entries.Count; i++)
             {
-                if (token.StartsWith(query, StringComparison.OrdinalIgnoreCase))
+                var entry = entries[i];
+
+                // Check if any token starts with the query prefix
+                var hasMatchingToken = false;
+                foreach (var token in entry.Tokens)
                 {
-                    hasMatchingToken = true;
-                    break;
+                    if (token.StartsWith(query, StringComparison.OrdinalIgnoreCase))
+                    {
+                        hasMatchingToken = true;
+                        break;
+                    }
+                }
+
+                if (!hasMatchingToken)
+                {
+                    continue;
+                }
+
+                var score = _scorer.Score(query, entry.App.Name, out var matchKind);
+                if (score > 0)
+                {
+                    buffer[count++] = (score, i, matchKind);
                 }
             }
 
-            // Skip if no token matches the prefix
-            if (!hasMatchingToken)
+            if (count == 0)
             {
-                continue;
+                return Array.Empty<SearchResult>();
             }
 
-            var score = _scorer.Score(query, entry.App.Name, out var matchKind);
-            if (score <= 0)
+            Array.Sort(buffer, 0, count, ScoredIndexComparer.Instance);
+
+            var resultCount = Math.Min(count, MaxResults);
+            var results = new SearchResult[resultCount];
+
+            for (var i = 0; i < resultCount; i++)
             {
-                continue;
+                var (score, index, matchKind) = buffer[i];
+                results[i] = new SearchResult
+                {
+                    App = entries[index].App,
+                    Score = score,
+                    MatchKind = matchKind
+                };
             }
 
-            results.Add(new SearchResult
-            {
-                App = entry.App,
-                Score = score,
-                MatchKind = matchKind
-            });
+            return results;
         }
-
-        if (results.Count == 0)
+        finally
         {
-            return Array.Empty<SearchResult>();
+            ArrayPool<(int, int, SearchMatchKind)>.Shared.Return(buffer);
         }
-
-        results.Sort(CompareResults);
-
-        if (results.Count > MaxResults)
-        {
-            results.RemoveRange(MaxResults, results.Count - MaxResults);
-        }
-
-        _logger.LogDebug("Token prefix search '{Query}' returned {Count} results.", query, results.Count);
-        return results;
     }
 
-    private static int CompareResults(SearchResult left, SearchResult right)
+    private async Task<IReadOnlyList<AppInfo>> GetCachedAppsAsync(CancellationToken ct)
     {
-        var scoreCompare = right.Score.CompareTo(left.Score);
-        if (scoreCompare != 0)
+        if (_cachedApps is not null)
         {
-            return scoreCompare;
+            return _cachedApps;
         }
 
-        var lengthCompare = left.App.Name.Length.CompareTo(right.App.Name.Length);
-        if (lengthCompare != 0)
+        var apps = await _appRepository.GetAllAsync(ct).ConfigureAwait(false);
+
+        lock (_cacheLock)
         {
-            return lengthCompare;
+            _cachedApps ??= apps;
         }
 
-        var nameCompare = StringComparer.OrdinalIgnoreCase.Compare(left.App.Name, right.App.Name);
-        if (nameCompare != 0)
+        return _cachedApps;
+    }
+
+    private async Task<IReadOnlyList<AppIndexEntry>> GetCachedEntriesAsync(CancellationToken ct)
+    {
+        if (_cachedEntries is not null)
         {
-            return nameCompare;
+            return _cachedEntries;
         }
 
-        return StringComparer.OrdinalIgnoreCase.Compare(left.App.ExecutablePath, right.App.ExecutablePath);
+        var entries = await _appRepository.GetAllWithTokensAsync(ct).ConfigureAwait(false);
+
+        lock (_cacheLock)
+        {
+            _cachedEntries ??= entries;
+        }
+
+        return _cachedEntries;
+    }
+
+    /// <summary>
+    /// Invalidates the cached app data. Call after indexing completes.
+    /// </summary>
+    public void InvalidateCache()
+    {
+        lock (_cacheLock)
+        {
+            _cachedApps = null;
+            _cachedEntries = null;
+        }
+    }
+
+    private sealed class ScoredIndexComparer : IComparer<(int Score, int Index, SearchMatchKind MatchKind)>
+    {
+        public static readonly ScoredIndexComparer Instance = new();
+
+        public int Compare((int Score, int Index, SearchMatchKind MatchKind) x, (int Score, int Index, SearchMatchKind MatchKind) y)
+        {
+            // Sort by score descending
+            return y.Score.CompareTo(x.Score);
+        }
     }
 }

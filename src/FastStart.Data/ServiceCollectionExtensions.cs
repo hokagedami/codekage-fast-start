@@ -35,7 +35,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IPreferencesRepository, PreferencesRepository>();
         services.AddSingleton<IRecentLaunchRepository, RecentLaunchRepository>();
         services.AddSingleton<IDatabaseInitializer, DatabaseInitializer>();
-        services.AddHostedService<DatabaseInitializerHostedService>();
+        // Note: DatabaseInitializerHostedService removed - DB initialization is now explicit
 
         return services;
     }

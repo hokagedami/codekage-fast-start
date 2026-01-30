@@ -7,5 +7,7 @@ public enum AppSource
 {
     Shortcut = 0,
     Uwp = 1,
-    Custom = 2
+    Custom = 2,
+    Registry = 3,
+    ProgramFiles = 4
 }

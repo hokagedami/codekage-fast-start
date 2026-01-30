@@ -7,9 +7,10 @@ public enum StartupMarker
 {
     ProcessStart = 0,
     HostBuilt = 1,
-    HostStarting = 2,
-    HostStarted = 3,
-    WindowCreated = 4,
-    FirstWindowActivated = 5,
-    Count = 6
+    WindowResolving = 2,
+    WindowCreated = 3,
+    FirstWindowActivated = 4,
+    HostStarting = 5,
+    HostStarted = 6,
+    Count = 7
 }

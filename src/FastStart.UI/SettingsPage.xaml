@@ -1,0 +1,132 @@
+<Page
+    x:Class="FastStart.UI.SettingsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <ScrollViewer Padding="24">
+        <StackPanel Spacing="8" MaxWidth="600">
+            <TextBlock Text="Settings" Style="{StaticResource TitleTextBlockStyle}" Margin="0,0,0,16"/>
+
+            <!-- General Section -->
+            <TextBlock Text="General" Style="{StaticResource SubtitleTextBlockStyle}" Margin="0,8,0,8"/>
+
+            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    CornerRadius="8"
+                    Padding="16">
+                <StackPanel Spacing="16">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="Start with Windows" Style="{StaticResource BodyStrongTextBlockStyle}"/>
+                            <TextBlock Text="Launch FastStart when you sign in" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.6"/>
+                        </StackPanel>
+                        <ToggleSwitch x:Name="AutoStartToggle" Grid.Column="1" Toggled="AutoStartToggle_Toggled"/>
+                    </Grid>
+
+                    <Rectangle Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}"/>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="Minimize to tray" Style="{StaticResource BodyStrongTextBlockStyle}"/>
+                            <TextBlock Text="Keep running in background when closed" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.6"/>
+                        </StackPanel>
+                        <ToggleSwitch x:Name="MinimizeToTrayToggle" Grid.Column="1" Toggled="MinimizeToTrayToggle_Toggled"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- Hotkey Section -->
+            <TextBlock Text="Hotkey" Style="{StaticResource SubtitleTextBlockStyle}" Margin="0,16,0,8"/>
+
+            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    CornerRadius="8"
+                    Padding="16">
+                <StackPanel Spacing="16">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="Override Windows key" Style="{StaticResource BodyStrongTextBlockStyle}"/>
+                            <TextBlock Text="Press Win key to open FastStart instead of Start Menu" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.6"/>
+                        </StackPanel>
+                        <ToggleSwitch x:Name="WinKeyHookToggle" Grid.Column="1" Toggled="WinKeyHookToggle_Toggled"/>
+                    </Grid>
+
+                    <InfoBar x:Name="HookWarningBar"
+                             IsOpen="False"
+                             Severity="Warning"
+                             Title="Admin rights may be required"
+                             Message="Some applications may not respond to the global hook. Run as administrator for best results."
+                             IsClosable="True"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Appearance Section -->
+            <TextBlock Text="Appearance" Style="{StaticResource SubtitleTextBlockStyle}" Margin="0,16,0,8"/>
+
+            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    CornerRadius="8"
+                    Padding="16">
+                <StackPanel Spacing="16">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="Theme" Style="{StaticResource BodyStrongTextBlockStyle}"/>
+                            <TextBlock Text="Choose your preferred color theme" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.6"/>
+                        </StackPanel>
+                        <ComboBox x:Name="ThemeComboBox" Grid.Column="1" Width="150" VerticalAlignment="Center" SelectionChanged="ThemeComboBox_SelectionChanged">
+                            <ComboBoxItem Content="System" Tag="System"/>
+                            <ComboBoxItem Content="Light" Tag="Light"/>
+                            <ComboBoxItem Content="Dark" Tag="Dark"/>
+                        </ComboBox>
+                    </Grid>
+
+                    <Rectangle Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}"/>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="Show recent apps" Style="{StaticResource BodyStrongTextBlockStyle}"/>
+                            <TextBlock Text="Display recently launched applications" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.6"/>
+                        </StackPanel>
+                        <ToggleSwitch x:Name="ShowRecentToggle" Grid.Column="1" Toggled="ShowRecentToggle_Toggled"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- About Section -->
+            <TextBlock Text="About" Style="{StaticResource SubtitleTextBlockStyle}" Margin="0,16,0,8"/>
+
+            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    CornerRadius="8"
+                    Padding="16">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="FastStart" Style="{StaticResource BodyStrongTextBlockStyle}"/>
+                    <TextBlock Text="Version 1.0.0" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.6"/>
+                    <TextBlock Text="A fast, lightweight Windows Start Menu replacement." Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.6"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Back Button -->
+            <Button Content="Back" Click="BackButton_Click" Margin="0,24,0,0" HorizontalAlignment="Left"/>
+        </StackPanel>
+    </ScrollViewer>
+</Page>

@@ -15,6 +15,8 @@ public static class ServiceCollectionExtensions
     {
         services.AddSingleton<IShortcutParser, ShellLinkShortcutParser>();
         services.AddSingleton<IUwpAppEnumerator, PackageManagerUwpAppEnumerator>();
+        services.AddSingleton<IRegistryAppEnumerator, RegistryAppEnumerator>();
+        services.AddSingleton<IProgramFilesScanner, ProgramFilesScanner>();
         services.AddSingleton<IAppLauncher, AppLauncher>();
         return services;
     }

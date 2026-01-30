@@ -3,20 +3,20 @@ namespace FastStart.Core.Models;
 /// <summary>
 /// Represents a scored search result.
 /// </summary>
-public sealed class SearchResult
+public readonly struct SearchResult
 {
     /// <summary>
-    /// Gets or sets the matched application.
+    /// Gets the matched application.
     /// </summary>
-    public required AppInfo App { get; set; }
+    public required AppInfo App { get; init; }
 
     /// <summary>
-    /// Gets or sets the computed score.
+    /// Gets the computed score.
     /// </summary>
-    public int Score { get; set; }
+    public required int Score { get; init; }
 
     /// <summary>
-    /// Gets or sets the match kind.
+    /// Gets the match kind.
     /// </summary>
-    public SearchMatchKind MatchKind { get; set; }
+    public required SearchMatchKind MatchKind { get; init; }
 }

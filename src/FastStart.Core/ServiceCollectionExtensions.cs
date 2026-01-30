@@ -17,7 +17,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<FuzzyScorer>();
         services.AddSingleton<ISearchService, SearchService>();
         services.AddSingleton<ITelemetryConsentService, TelemetryConsentService>();
-        services.AddHostedService<AppIndexService>();
+        services.AddSingleton<AppIndexService>();
         return services;
     }
 }
