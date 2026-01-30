@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0078D4"/>
+      <stop offset="100%" style="stop-color:#005A9E"/>
+    </linearGradient>
+    <linearGradient id="boltGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFD700"/>
+      <stop offset="100%" style="stop-color:#FFA500"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Rounded square background -->
+  <rect x="8" y="8" width="240" height="240" rx="48" ry="48" fill="url(#bgGrad)"/>
+
+  <!-- Lightning bolt (representing speed/fast) -->
+  <path d="M 148 40 L 88 128 L 120 128 L 108 216 L 168 120 L 132 120 Z"
+        fill="url(#boltGrad)"
+        stroke="#FFF"
+        stroke-width="4"
+        stroke-linejoin="round"/>
+
+  <!-- Speed lines -->
+  <line x1="40" y1="100" x2="72" y2="100" stroke="#FFF" stroke-width="8" stroke-linecap="round" opacity="0.7"/>
+  <line x1="48" y1="128" x2="80" y2="128" stroke="#FFF" stroke-width="8" stroke-linecap="round" opacity="0.85"/>
+  <line x1="40" y1="156" x2="72" y2="156" stroke="#FFF" stroke-width="8" stroke-linecap="round" opacity="0.7"/>
+</svg>

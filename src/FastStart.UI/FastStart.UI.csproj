@@ -31,6 +31,8 @@
     <GeneratePriFile>false</GeneratePriFile>
     <MrtCoreDeployAssets>false</MrtCoreDeployAssets>
     <DisableMrtForUnpackagedApps>true</DisableMrtForUnpackagedApps>
+    <!-- Application icon -->
+    <ApplicationIcon>..\..\assets\FastStart.ico</ApplicationIcon>
     <!-- Point MRT tooling to VS Build Tools path -->
     <MrtCoreToolDirectory>C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage\</MrtCoreToolDirectory>
     <WindowsAppSdkBootstrapAutoInitializeOptions_OnNoMatch>Ignore</WindowsAppSdkBootstrapAutoInitializeOptions_OnNoMatch>
@@ -57,6 +59,13 @@
     <ApplicationDefinition Include="App.xaml" />
     <Page Include="MainWindow.xaml" />
     <Page Include="SettingsPage.xaml" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\..\assets\FastStart.ico">
+      <Link>FastStart.ico</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
   <!-- Override PRI targets to no-op when disabled -->
