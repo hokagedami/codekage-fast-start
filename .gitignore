@@ -16,6 +16,7 @@ riderModule.iml
 nul
 /publish/
 /dist/
+BenchmarkDotNet.Artifacts/
 
 # Local settings
 .claude/settings.local.json
